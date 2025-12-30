@@ -41,6 +41,7 @@ type KeycloakClient struct {
 	debug               bool
 	redHatSSO           bool
 	accessTokenProvided bool
+	keycloakVersion     string
 	Mutex               *mutex.KeyValue
 }
 
@@ -72,7 +73,7 @@ var redHatSSO7VersionMap = map[int]string{
 	4: "9.0.17",
 }
 
-func NewKeycloakClient(ctx context.Context, url, basePath, adminUrl, clientId, clientSecret, realm, username, password, accessToken, jwtSigningAlg, jwtSigningKey, jwtToken, jwtTokenFile string, initialLogin bool, clientTimeout int, caCert string, tlsInsecureSkipVerify bool, tlsClientCert string, tlsClientPrivateKey string, userAgent string, redHatSSO bool, additionalHeaders map[string]string) (*KeycloakClient, error) {
+func NewKeycloakClient(ctx context.Context, url, basePath, adminUrl, clientId, clientSecret, realm, username, password, accessToken, jwtSigningAlg, jwtSigningKey, jwtToken, jwtTokenFile string, initialLogin bool, clientTimeout int, caCert string, tlsInsecureSkipVerify bool, tlsClientCert string, tlsClientPrivateKey string, userAgent string, redHatSSO bool, additionalHeaders map[string]string, keycloakVersion string) (*KeycloakClient, error) {
 	clientCredentials := &ClientCredentials{
 		ClientId:      clientId,
 		ClientSecret:  clientSecret,
@@ -130,6 +131,7 @@ func NewKeycloakClient(ctx context.Context, url, basePath, adminUrl, clientId, c
 		redHatSSO:           redHatSSO,
 		additionalHeaders:   additionalHeaders,
 		accessTokenProvided: accessToken != "",
+		keycloakVersion:     keycloakVersion,
 		Mutex:               mutex.New(),
 	}
 
@@ -210,8 +212,21 @@ func (keycloakClient *KeycloakClient) login(ctx context.Context) error {
 	}
 
 	serverVersion := info.SystemInfo.ServerVersion
+	// Handle empty version (Keycloak 26.4+ restricts serverinfo without view-system role)
+	if serverVersion == "" {
+		if keycloakClient.keycloakVersion != "" {
+			serverVersion = keycloakClient.keycloakVersion
+			tflog.Info(ctx, "Using configured keycloak_version since serverinfo returned empty version", map[string]interface{}{
+				"keycloak_version": serverVersion,
+			})
+		} else {
+			return fmt.Errorf("unable to determine Keycloak version: serverinfo endpoint returned empty version. " +
+				"This typically occurs with Keycloak 26.4+ when the service account lacks the 'view-system' role. " +
+				"Either grant the 'view-system' role in the 'realm-management' client, or set the 'keycloak_version' provider attribute (e.g., keycloak_version = \"26.4.7\")")
+		}
+	}
 	if strings.Contains(serverVersion, ".GA") {
-		serverVersion = strings.ReplaceAll(info.SystemInfo.ServerVersion, ".GA", "")
+		serverVersion = strings.ReplaceAll(serverVersion, ".GA", "")
 	} else {
 		regex, err := regexp.Compile(`\.redhat-\w+`)
 
