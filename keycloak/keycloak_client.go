@@ -196,6 +196,10 @@ func (keycloakClient *KeycloakClient) login(ctx context.Context) error {
 	}
 
 	serverVersion := info.SystemInfo.ServerVersion
+	// Handle empty version (Keycloak 26.4+ restricts serverinfo without view-system role)
+	if serverVersion == "" {
+		serverVersion = "26.4.7"
+	}
 	if strings.Contains(serverVersion, ".GA") {
 		serverVersion = strings.ReplaceAll(info.SystemInfo.ServerVersion, ".GA", "")
 	} else {
