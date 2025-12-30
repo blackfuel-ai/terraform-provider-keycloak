@@ -242,6 +242,12 @@ func KeycloakProvider(client *keycloak.KeycloakClient) *schema.Provider {
 					Type: schema.TypeString,
 				},
 			},
+			"keycloak_version": {
+				Optional:    true,
+				Type:        schema.TypeString,
+				Description: "The Keycloak version to use for API compatibility. Required when the service account lacks the view-system role (Keycloak 26.4+). Example: \"26.4.7\"",
+				DefaultFunc: schema.EnvDefaultFunc("KEYCLOAK_VERSION", ""),
+			},
 		},
 	}
 
@@ -272,12 +278,13 @@ func KeycloakProvider(client *keycloak.KeycloakClient) *schema.Provider {
 		for k, v := range data.Get("additional_headers").(map[string]interface{}) {
 			additionalHeaders[k] = v.(string)
 		}
+		keycloakVersion := data.Get("keycloak_version").(string)
 
 		var diags diag.Diagnostics
 
 		userAgent := fmt.Sprintf("HashiCorp Terraform/%s (+https://www.terraform.io) Terraform Plugin SDK/%s", provider.TerraformVersion, meta.SDKVersionString())
 
-		keycloakClient, err := keycloak.NewKeycloakClient(ctx, url, basePath, adminUrl, clientId, clientSecret, realm, username, password, accessToken, jwtSigningAlg, jwtSigningKey, initialLogin, clientTimeout, rootCaCertificate, tlsInsecureSkipVerify, tlsClientCertificate, tlsClientPrivateKey, userAgent, redHatSSO, additionalHeaders)
+		keycloakClient, err := keycloak.NewKeycloakClient(ctx, url, basePath, adminUrl, clientId, clientSecret, realm, username, password, accessToken, jwtSigningAlg, jwtSigningKey, initialLogin, clientTimeout, rootCaCertificate, tlsInsecureSkipVerify, tlsClientCertificate, tlsClientPrivateKey, userAgent, redHatSSO, additionalHeaders, keycloakVersion)
 		if err != nil {
 			diags = append(diags, diag.Diagnostic{
 				Severity: diag.Error,

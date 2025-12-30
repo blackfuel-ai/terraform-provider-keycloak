@@ -149,3 +149,32 @@ The following arguments are supported:
 - `tls_client_private_key` - (Optional) The TLS client pkcs1 private key in PEM format when the keycloak server is configured with TLS mutual authentication.
 - `base_path` - (Optional) The base path used for accessing the Keycloak REST API.  Defaults to the environment variable `KEYCLOAK_BASE_PATH`, or an empty string if the environment variable is not specified. Note that users of the legacy distribution of Keycloak will need to set this attribute to `/auth`.
 - `additional_headers` - (Optional) A map of custom HTTP headers to add to each request to the Keycloak API.
+- `keycloak_version` - (Optional) The Keycloak version to use for API compatibility. Defaults to the environment variable `KEYCLOAK_VERSION`. This is required when running Keycloak 26.4+ and the service account lacks the `view-system` role in the `realm-management` client (see note below).
+
+## A note for users of Keycloak 26.4+
+
+Starting with Keycloak 26.4, the `/admin/serverinfo` endpoint only returns system information (including the server version)
+for administrators in the master realm or users with the `view-system` role. If your service account operates in a non-master
+realm without this role, the provider cannot automatically detect the Keycloak version.
+
+You have two options to resolve this:
+
+1. **Grant the `view-system` role** (recommended for full compatibility): Create the `view-system` role in the `realm-management`
+   client and assign it to your service account.
+
+2. **Set the `keycloak_version` attribute**: Explicitly specify the Keycloak version in your provider configuration:
+
+```hcl
+provider "keycloak" {
+  client_id        = "terraform"
+  client_secret    = "your-client-secret"
+  url              = "https://keycloak.example.com"
+  realm            = "my-realm"
+  keycloak_version = "26.4.7"  # Specify your Keycloak version
+}
+```
+
+Or via environment variable:
+```bash
+export KEYCLOAK_VERSION="26.4.7"
+```
