@@ -13,8 +13,9 @@ import (
 func KeycloakProvider(client *keycloak.KeycloakClient) *schema.Provider {
 	provider := &schema.Provider{
 		DataSourcesMap: map[string]*schema.Resource{
-			"keycloak_generic_protocol_mapper":            dataSourceKeycloakGenericProtocolMapper(),
-			"keycloak_group":                              dataSourceKeycloakGroup(),
+			"keycloak_generic_protocol_mapper":                dataSourceKeycloakGenericProtocolMapper(),
+			"keycloak_group":                                  dataSourceKeycloakGroup(),
+			"keycloak_realm_client_registration_policy":       dataSourceKeycloakRealmClientRegistrationPolicy(),
 			"keycloak_openid_client":                      dataSourceKeycloakOpenidClient(),
 			"keycloak_openid_client_authorization_policy": dataSourceKeycloakOpenidClientAuthorizationPolicy(),
 			"keycloak_openid_client_scope":                dataSourceKeycloakOpenidClientScope(),
