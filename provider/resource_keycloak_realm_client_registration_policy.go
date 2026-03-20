@@ -80,8 +80,9 @@ func getRealmClientRegistrationPolicyFromData(data *schema.ResourceData) *keyclo
 		configMap := v.(map[string]interface{})
 		for key, value := range configMap {
 			strValue := value.(string)
-			// Handle comma-separated values for fields like trusted-hosts
-			if key == "trusted-hosts" && strings.Contains(strValue, ",") {
+			// Handle comma-separated values for multi-value config fields
+			multiValueKeys := map[string]bool{"trusted-hosts": true, "allowed-client-scopes": true}
+			if multiValueKeys[key] && strings.Contains(strValue, ",") {
 				// Split by comma and trim spaces
 				values := strings.Split(strValue, ",")
 				for i, val := range values {
@@ -126,8 +127,9 @@ func setRealmClientRegistrationPolicyData(data *schema.ResourceData, policy *key
 	configMap := make(map[string]string)
 	for key, values := range policy.Config {
 		if len(values) > 0 {
-			// Join array values with comma for fields like trusted-hosts
-			if key == "trusted-hosts" && len(values) > 1 {
+			// Join array values with comma for multi-value config fields
+			multiValueKeys := map[string]bool{"trusted-hosts": true, "allowed-client-scopes": true}
+			if multiValueKeys[key] && len(values) > 1 {
 				configMap[key] = strings.Join(values, ",")
 			} else {
 				configMap[key] = values[0]
