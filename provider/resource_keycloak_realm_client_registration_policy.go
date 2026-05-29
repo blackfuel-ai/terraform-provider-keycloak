@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -23,6 +24,17 @@ var (
 	keycloakRealmClientRegistrationPolicySubTypes = []string{
 		"anonymous",
 		"authenticated",
+	}
+
+	// multiValueClientRegistrationConfigKeys are config fields that Keycloak stores as
+	// an array of individual values. In Terraform they are expressed as a single
+	// comma-separated string, split into the array on write and re-joined on read.
+	// Keycloak does not preserve element order across writes, so these fields are
+	// compared order-insensitively (see suppressMultiValueClientRegistrationConfigOrder)
+	// to avoid perpetual drift on every plan/apply.
+	multiValueClientRegistrationConfigKeys = map[string]bool{
+		"trusted-hosts":         true,
+		"allowed-client-scopes": true,
 	}
 )
 
@@ -62,9 +74,10 @@ func resourceKeycloakRealmClientRegistrationPolicy() *schema.Resource {
 				Description:  "The sub-type of the policy. Valid values are: anonymous (for anonymous client registration), authenticated (for authenticated client registration).",
 			},
 			"config": {
-				Type:        schema.TypeMap,
-				Optional:    true,
-				Description: "Configuration options for the policy. The available options depend on the provider_id.",
+				Type:             schema.TypeMap,
+				Optional:         true,
+				Description:      "Configuration options for the policy. The available options depend on the provider_id.",
+				DiffSuppressFunc: suppressMultiValueClientRegistrationConfigOrder,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
@@ -81,8 +94,7 @@ func getRealmClientRegistrationPolicyFromData(data *schema.ResourceData) *keyclo
 		for key, value := range configMap {
 			strValue := value.(string)
 			// Handle comma-separated values for multi-value config fields
-			multiValueKeys := map[string]bool{"trusted-hosts": true, "allowed-client-scopes": true}
-			if multiValueKeys[key] && strings.Contains(strValue, ",") {
+			if multiValueClientRegistrationConfigKeys[key] && strings.Contains(strValue, ",") {
 				// Split by comma and trim spaces
 				values := strings.Split(strValue, ",")
 				for i, val := range values {
@@ -128,8 +140,7 @@ func setRealmClientRegistrationPolicyData(data *schema.ResourceData, policy *key
 	for key, values := range policy.Config {
 		if len(values) > 0 {
 			// Join array values with comma for multi-value config fields
-			multiValueKeys := map[string]bool{"trusted-hosts": true, "allowed-client-scopes": true}
-			if multiValueKeys[key] && len(values) > 1 {
+			if multiValueClientRegistrationConfigKeys[key] && len(values) > 1 {
 				configMap[key] = strings.Join(values, ",")
 			} else {
 				configMap[key] = values[0]
@@ -245,4 +256,58 @@ func resourceKeycloakRealmClientRegistrationPolicyImport(ctx context.Context, d 
 	}
 
 	return []*schema.ResourceData{d}, nil
+}
+
+// suppressMultiValueClientRegistrationConfigOrder suppresses spurious diffs on
+// multi-value config fields (trusted-hosts, allowed-client-scopes) whose comma-separated
+// old and new values contain the same elements in a different order. Keycloak returns
+// these arrays in an order that does not match the written order, so without this the
+// provider would plan an update on every run even when nothing meaningfully changed.
+//
+// k is the flattened map element key, e.g. "config.trusted-hosts"; the synthetic
+// "config.%" element-count key and any non-multi-value field are never suppressed.
+func suppressMultiValueClientRegistrationConfigOrder(k, old, new string, _ *schema.ResourceData) bool {
+	key := strings.TrimPrefix(k, "config.")
+	if !multiValueClientRegistrationConfigKeys[key] {
+		return false
+	}
+
+	return equalCommaSeparatedSet(old, new)
+}
+
+// equalCommaSeparatedSet reports whether two comma-separated strings contain the same
+// multiset of whitespace-trimmed elements, ignoring order. A differing element count
+// (including added, removed, or duplicated values) is treated as a genuine change.
+func equalCommaSeparatedSet(a, b string) bool {
+	as := splitTrimComma(a)
+	bs := splitTrimComma(b)
+	if len(as) != len(bs) {
+		return false
+	}
+
+	sort.Strings(as)
+	sort.Strings(bs)
+	for i := range as {
+		if as[i] != bs[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+// splitTrimComma splits a comma-separated string into its trimmed, non-normalized
+// elements. An empty or whitespace-only string yields no elements.
+func splitTrimComma(s string) []string {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		out = append(out, strings.TrimSpace(p))
+	}
+
+	return out
 }
