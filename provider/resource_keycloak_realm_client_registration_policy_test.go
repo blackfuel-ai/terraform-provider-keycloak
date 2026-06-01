@@ -61,6 +61,14 @@ func TestAccKeycloakRealmClientRegistrationPolicy_trustedHosts(t *testing.T) {
 					resource.TestCheckResourceAttr("keycloak_realm_client_registration_policy.test", "config.trusted-hosts", "claude.ai,opencode.ai"),
 				),
 			},
+			{
+				// Same set, different order. This is the behaviour the DiffSuppressFunc
+				// exists for: Keycloak may return the multi-value field in a different
+				// order than written, which must NOT plan a change. PlanOnly fails the
+				// test on any non-empty plan, so this asserts the reorder is suppressed.
+				Config:   testKeycloakRealmClientRegistrationPolicy_trustedHosts(policyName, "opencode.ai,claude.ai"),
+				PlanOnly: true,
+			},
 		},
 	})
 }
