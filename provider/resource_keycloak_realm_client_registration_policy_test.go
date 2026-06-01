@@ -61,6 +61,14 @@ func TestAccKeycloakRealmClientRegistrationPolicy_trustedHosts(t *testing.T) {
 					resource.TestCheckResourceAttr("keycloak_realm_client_registration_policy.test", "config.trusted-hosts", "claude.ai,opencode.ai"),
 				),
 			},
+			{
+				// Same set, different order. This is the behaviour the DiffSuppressFunc
+				// exists for: Keycloak may return the multi-value field in a different
+				// order than written, which must NOT plan a change. PlanOnly fails the
+				// test on any non-empty plan, so this asserts the reorder is suppressed.
+				Config:   testKeycloakRealmClientRegistrationPolicy_trustedHosts(policyName, "opencode.ai,claude.ai"),
+				PlanOnly: true,
+			},
 		},
 	})
 }
@@ -272,6 +280,12 @@ resource "keycloak_realm_client_registration_policy" "test" {
 	name        = "%s"
 	provider_id = "%s"
 	sub_type    = "anonymous"
+
+	config = {
+		"trusted-hosts"                                = "example.com"
+		"host-sending-registration-request-must-match" = "true"
+		"client-uris-must-match"                       = "true"
+	}
 }
 	`, testAccRealmUserFederation.Realm, policyName, providerId)
 }
@@ -287,6 +301,12 @@ resource "keycloak_realm_client_registration_policy" "test" {
 	name        = "%s"
 	provider_id = "trusted-hosts"
 	sub_type    = "%s"
+
+	config = {
+		"trusted-hosts"                                = "example.com"
+		"host-sending-registration-request-must-match" = "true"
+		"client-uris-must-match"                       = "true"
+	}
 }
 	`, testAccRealmUserFederation.Realm, policyName, subType)
 }
