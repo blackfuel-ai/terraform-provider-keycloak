@@ -272,6 +272,12 @@ resource "keycloak_realm_client_registration_policy" "test" {
 	name        = "%s"
 	provider_id = "%s"
 	sub_type    = "anonymous"
+
+	config = {
+		"trusted-hosts"                                = "example.com"
+		"host-sending-registration-request-must-match" = "true"
+		"client-uris-must-match"                       = "true"
+	}
 }
 	`, testAccRealmUserFederation.Realm, policyName, providerId)
 }
@@ -287,6 +293,12 @@ resource "keycloak_realm_client_registration_policy" "test" {
 	name        = "%s"
 	provider_id = "trusted-hosts"
 	sub_type    = "%s"
+
+	config = {
+		"trusted-hosts"                                = "example.com"
+		"host-sending-registration-request-must-match" = "true"
+		"client-uris-must-match"                       = "true"
+	}
 }
 	`, testAccRealmUserFederation.Realm, policyName, subType)
 }
