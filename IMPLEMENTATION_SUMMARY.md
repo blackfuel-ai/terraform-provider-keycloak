@@ -218,3 +218,13 @@ $ make build
 - Upstream Issue: https://github.com/keycloak/terraform-provider-keycloak/issues/715
 - Keycloak Components API: https://www.keycloak.org/docs-api/latest/rest-api/index.html#_component_resource
 - Client Registration: https://www.keycloak.org/docs/latest/securing_apps/index.html#_client_registration
+
+## Fork Release Note (v5.8.0+bf.1)
+
+Rebased onto upstream **v5.8.0**. The `keycloak_generic_protocol_mapper` data
+source previously carried by the fork was contributed upstream and merged into
+v5.8.0 (upstream PR #1436), so it is no longer a fork patch. The remaining 7
+Blackfuel patches are retained. Client-registration-policy acceptance tests were
+migrated from `terraform-plugin-sdk/v2/helper/resource` to
+`terraform-plugin-testing` to match upstream's v5.8.0 test framework
+(upstream PR #1518).

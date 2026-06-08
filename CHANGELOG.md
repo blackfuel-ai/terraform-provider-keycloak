@@ -1,5 +1,23 @@
 ## What's Changed
 
+## 5.8.0+bf.1 (Blackfuel fork)
+
+Fork release based on upstream **v5.8.0**.
+
+Retains 7 Blackfuel patches on top of upstream v5.8.0:
+
+* Handle empty server version for Keycloak 26.4+ — adds the `keycloak_version` provider attribute and `KEYCLOAK_VERSION` env var for service accounts lacking the `view-system` role.
+* `keycloak_realm_client_registration_policy` resource.
+* `keycloak_realm_client_registration_policy` data source.
+* Import support for client registration policies by name / providerId / subType.
+* Multi-value `allowed-client-scopes` handled as comma-separated config.
+* Order-insensitive comparison of multi-value client-registration config.
+* Import support for `keycloak_realm_default_client_scopes`.
+
+Dropped (now upstreamed): the `keycloak_generic_protocol_mapper` data source was contributed upstream and merged into v5.8.0 (upstream PR #1436), so it is no longer carried as a fork patch.
+
+Note: client-registration-policy acceptance tests were migrated to `terraform-plugin-testing` to match upstream v5.8.0 (upstream PR #1518).
+
 ## 5.8.0 (June 05, 2026)
 
 FEATURES:
